@@ -3,13 +3,13 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 env:
-  IMAGE_NAME: zomato-app
+  IMAGE_NAME: botatovada
 
 jobs:
   build-and-deploy:
@@ -19,16 +19,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          projectBaseDir: .
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm test
 
       - name: Install Trivy
         uses: aquasecurity/trivy-action@master
@@ -40,6 +40,9 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh -s --
           docker scout quickview .
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to DockerHub
         uses: docker/login-action@v2
@@ -65,7 +68,3 @@ jobs:
           kubectl apply -f k8s/service.yaml
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
-
-      - name: Trigger ArgoCD Sync
-        run: |
-          argocd app sync zomato-app --auth-token ${{ secrets.ARGOCD_TOKEN }} --server ${{ secrets.ARGOCD_SERVER }}
